@@ -22,8 +22,6 @@ const NUM_THREADS_ARG: &str = "num-threads";
 const RAW_ARG: &str = "raw";
 const CHECK_ARG: &str = "check";
 const QUIET_ARG: &str = "quiet";
-const FRONT_ARG: &str = "front";
-const FRONT_JOBS_ARG: &str = "front-jobs";
 const FRONT_SIZE_ARG: &str = "front-size-kb";
 const CHAIN_ARG: &str = "chain";
 const CHAIN_PROBE_ARG: &str = "chain-probe";
@@ -121,16 +119,6 @@ impl Args {
                     ),
             )
             .arg(
-                Arg::new(FRONT_ARG)
-                    .long(FRONT_ARG)
-                    .help("Uses a from-the-front multithreading strategy."),
-            )
-            .arg(
-                Arg::new(FRONT_JOBS_ARG)
-                    .long(FRONT_JOBS_ARG)
-                    .takes_value(true),
-            )
-            .arg(
                 Arg::new(FRONT_SIZE_ARG)
                     .long(FRONT_SIZE_ARG)
                     .takes_value(true),
@@ -222,18 +210,6 @@ impl Args {
         self.inner.is_present(QUIET_ARG)
     }
 
-    fn front(&self) -> bool {
-        self.inner.is_present(FRONT_ARG)
-    }
-
-    fn front_jobs(&self) -> usize {
-        if let Some(s) = self.inner.value_of(FRONT_JOBS_ARG) {
-            s.parse().unwrap()
-        } else {
-            blake3::default_front_max_jobs()
-        }
-    }
-
     fn front_size(&self) -> usize {
         if let Some(s) = self.inner.value_of(FRONT_SIZE_ARG) {
             s.parse::<usize>().unwrap() * 1024
@@ -308,14 +284,7 @@ impl Input {
                         );
                     }
                 }
-                assert!(!(args.front() && args.chain()), "can't do both");
-                if args.front() {
-                    hasher.update_rayon_from_the_front(
-                        cursor.get_ref(),
-                        args.front_size(),
-                        args.front_jobs(),
-                    );
-                } else if args.chain() {
+                if args.chain() {
                     hasher.update_rayon_chain(
                         cursor.get_ref(),
                         args.front_size(),
